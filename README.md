@@ -69,4 +69,19 @@ spec:
 
 </pre>
 
+### Scale replicas by command 
+<pre>
+  kubectl scale rs nginx-rs --replicas=2
+</pre>
+### Scale replicas by editing yaml
+<pre>
+  kubectl edit rs nginx-rs
+</pre>
+Then update:
+<pre>
+  spec:
+  replicas: 5
+
+</pre>
+
 
