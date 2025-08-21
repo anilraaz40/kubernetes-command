@@ -69,11 +69,11 @@ spec:
 
 </pre>
 
-### Scale replicas by command 
+Scale replicas by command 
 <pre>
   kubectl scale rs nginx-rs --replicas=2
 </pre>
-### Scale replicas by editing yaml
+Scale replicas by editing yaml
 <pre>
   kubectl edit rs nginx-rs
 </pre>
@@ -82,6 +82,49 @@ Then update:
   spec:
   replicas: 5
 
+</pre>
+
+### Deployment 
+
+<pre>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deploy
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:              
+        - name: frontend        
+          image: nginx:latest   
+          ports:
+            - containerPort: 80
+
+</pre>
+apply deployment
+<pre>
+  kubectl apply -f deployment.yaml
+</pre>
+change the version of image
+<pre>
+  kubectl set image deployment/nginx-deploy frontend=nginx:1.25
+</pre>
+check the version
+<pre>
+  kubectl describe deployment nginx-deploy
+</pre>
+rollback 
+<pre>
+  kubectl rollout undo deployment/nginx-deploy
 </pre>
 
 
