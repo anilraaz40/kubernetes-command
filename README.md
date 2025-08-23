@@ -247,3 +247,97 @@ spec:
   type: ExternalName
   externalName: my.api.example.com
 </pre>
+
+## Multi-container
+create a pod which do some work and depend on other work
+<pre>
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app.kubernetes.io/name: MyApp
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    env:
+    - name: FIRSTNAME
+      value: "Piyush"
+    command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c'] #command to run
+    args: ['until nslookup myservice.default.svc.cluster.local; do echo waiting for myservice; sleep 2; done']
+  - name: init-mydb
+    image: busybox:1.28
+    command: ['sh', '-c']
+    args: ['until nslookup mydb.default.svc.cluster.local; do echo waiting for mydb; sleep 2; done']
+</pre>
+apply the pod and check the status
+<pre>
+  kubectl apply -f pod.yaml
+  kubectl get pods
+</pre>
+It will show init 0/1
+
+Now check the logs
+
+<pre>
+  kubectl logs myapp-pod -c init-myservice
+</pre>
+it will diplay like can't resolved
+<img width="1446" height="342" alt="image" src="https://github.com/user-attachments/assets/885ef551-8aeb-4961-8ec3-3fb128b077ac" />
+
+Now create a deployment and apply the deployment
+<pre>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myservice
+  template:
+    metadata:
+      labels:
+        app: myservice
+    spec:
+      containers:
+      - name: myservice
+        image: busybox:1.28
+        command: ['sh', '-c', 'echo myservice is ready && sleep 3600']
+</pre>
+
+Create a service and expose the service
+<pre>
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice
+spec:
+  selector:
+    app: myservice
+  ports:
+    - port: 80
+      targetPort: 80
+</pre>
+check the pod now it should be running
+<pre>
+  kubectl get pod myapp-pod
+</pre>
+<pre>
+  NAME         READY   STATUS    RESTARTS   AGE
+  myapp-pod    1/1     Running   0          2m
+
+</pre>
+Now describe the pod
+<pre>
+  kubectl logs myapp-pod -c init-myservice
+</pre>
+it should be deplay like
+<img width="1128" height="154" alt="image" src="https://github.com/user-attachments/assets/76f2585f-2097-4c23-b8bc-7fbcc840a732" />
+
