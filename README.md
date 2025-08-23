@@ -341,3 +341,101 @@ Now describe the pod
 it should be deplay like
 <img width="1128" height="154" alt="image" src="https://github.com/user-attachments/assets/76f2585f-2097-4c23-b8bc-7fbcc840a732" />
 
+## DaemonSet
+create a file and appply this file
+<pre>
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-daemon
+spec:
+  selector:
+    matchLabels:
+      app: my-daemon
+  template:
+    metadata:
+      labels:
+        app: my-daemon
+    spec:
+      containers:
+      - name: my-daemon
+        image: busybox
+        command: ["sh", "-c", "while true; do echo Running on $(hostname); sleep 10; done"]
+
+</pre>
+run this command to check pod running
+<pre>
+  kubectl get pods -o wide
+</pre>
+output should be like this
+<pre>
+NAME             READY   STATUS    NODE
+my-daemon-xxx1   1/1     Running   worker-node-1
+my-daemon-xxx2   1/1     Running   worker-node-2
+
+</pre>
+Check logs of one pod
+<pre>
+  kubectl logs my-daemon-aaa1
+</pre>
+## JOB
+create file and apply
+<pre>
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hello-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: hello
+        image: busybox
+        command: ["echo", "Hello from Kubernetes Job!"]
+      restartPolicy: Never
+  backoffLimit: 2
+</pre>
+Run it:
+<pre>
+kubectl apply -f job.yaml
+kubectl get jobs
+kubectl logs job/hello-job
+</pre>
+You’ll see output:
+<pre>
+  Hello from Kubernetes Job!
+</pre>
+## CronJob
+Create file and run file
+<pre>
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hello-cronjob
+spec:
+  schedule: "*/1 * * * *"   # every 1 minute
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox
+            command: ["sh", "-c", "date; echo Hello from Kubernetes CronJob!"]
+          restartPolicy: Never
+
+</pre>
+Run it:
+<pre>
+kubectl apply -f cronjob.yaml
+kubectl get cronjobs
+kubectl get jobs
+kubectl logs <job-pod-name>
+
+</pre>
+You’ll see logs like:
+<pre>
+Sat Aug 24 11:45:01 UTC 2025
+Hello from Kubernetes CronJob!
+
+</pre>
