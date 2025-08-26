@@ -199,6 +199,92 @@ To Describe the NodePort Services
 Check in the browser EC2 Ip address with port (30001)
 <img width="1886" height="788" alt="image" src="https://github.com/user-attachments/assets/40a365e4-5e90-4e37-8344-f12280cb1e94" />
 
+## Custome html page or other page 
+**Step 1.** Create a file
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Custom Nginx Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f2f2f2;
+            color: #333;
+            margin-top: 50px;
+        }
+        h1 {
+            color: #ff6600;
+        }
+        p {
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to My Nginx Server!</h1>
+    <p>This page is served from a Kubernetes NodePort service.</p>
+</body>
+</html>
+```
+
+**Step 2.** Create a ConfigMap from this file
+<pre>
+  kubectl create configmap nginx-html --from-file=index.html
+</pre>
+
+**Step 3:** Update your Deployment to mount the ConfigMap
+
+<pre>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deploy
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: frontend
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: html
+          configMap:
+            name: nginx-html
+
+</pre>
+Apply it:
+<pre>
+  kubectl apply -f nginx-deploy.yaml
+</pre>
+Step 4: Access your page
+
+Open your browser and go to:
+<pre>
+  http://NODE-IP:30001
+</pre>
+or
+<pre>
+  http://EC2-public-IP:30001
+</pre>
+<img width="2652" height="612" alt="image" src="https://github.com/user-attachments/assets/6201cd50-2276-4264-ac7e-b5891fa71f2f" />
+
+
 ### ClusterIP
 <pre>
 apiVersion: v1
@@ -507,3 +593,4 @@ Toleration	         Node must have taint	        Pod must have toleration
 </pre>
 
 ### If you are using nodeSelector with labels, but the target node has a taint, the pod will not run unless it also has a matching toleration.
+
