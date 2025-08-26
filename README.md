@@ -171,16 +171,14 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nodeport-svc
-  labels:
-    env: demo
 spec:
   type: NodePort
-  ports:
-  - nodePort: 30001
-    port: 80
-    targetPort: 80
   selector:
-    env: demo
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30001
 </pre>
 To check the Services
 <pre>
