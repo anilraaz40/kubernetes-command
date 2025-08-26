@@ -130,6 +130,7 @@ rollback
 ## NodePort
 Step 1
 If you use a Kind cluster, you must perform the port mapping to expose the container port. Use the below config to create a new Kind cluster
+**We use NodePort in Kubernetes to expose a pod or Deployment outside the cluster, so it can be accessed from outside the Kubernetes network.**
 <pre>
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
