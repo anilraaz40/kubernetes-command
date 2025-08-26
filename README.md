@@ -439,3 +439,65 @@ Sat Aug 24 11:45:01 UTC 2025
 Hello from Kubernetes CronJob!
 
 </pre>
+
+## Taint & Tolerant & nodeSelector
+
+In Kubernetes, taints and tolerations work together to control which pods can be scheduled onto which nodes.
+### Taint
+ 1. Applied on a node.
+ 2. Means “do not schedule pods here unless they tolerate this taint.”
+<pre>
+  kubectl taint nodes <node-name> key=value:effect
+</pre>
+Effects:
+
+**NoSchedule** → Pods that don’t tolerate the taint will not be scheduled.
+
+**PreferNoSchedule** → Tries to avoid placing pods here, but not strict.
+
+**NoExecute** → Evicts existing pods that don’t tolerate it, and stops new ones from being scheduled.
+<pre>
+  kubectl taint nodes worker1 dedicated=database:NoSchedule
+</pre>
+### Toleration
+Applied on a pod.
+
+Tells the scheduler: “I can tolerate this taint.”
+
+Defined inside the Pod spec:
+<pre>
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "database"
+    effect: "NoSchedule"
+  containers:
+  - name: nginx
+    image: nginx
+
+</pre>
+**How they work together:**
+If a node has a taint, only pods with a matching toleration can be scheduled there.
+
+If no toleration exists, the pod is kept away from that node.
+### nodeSelector
+NodeSelector schedules a pod only on nodes with specific labels.
+<pre>
+  kubectl label nodes node-name dedicated=database
+</pre>
+<pre>
+✅ Summary
+
+Mechanism	Node       Requirement	                Pod Spec Requirement
+
+NodeSelector	       Node must have label	        Pod must have nodeSelector
+
+Toleration	         Node must have taint	        Pod must have toleration
+</pre>
+
+### If you are using nodeSelector with labels, but the target node has a taint, the pod will not run unless it also has a matching toleration.
