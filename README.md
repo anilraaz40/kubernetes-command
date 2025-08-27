@@ -200,7 +200,7 @@ Check in the browser EC2 Ip address with port (30001)
 <img width="1886" height="788" alt="image" src="https://github.com/user-attachments/assets/40a365e4-5e90-4e37-8344-f12280cb1e94" />
 
 ## Custome html page or other page 
-**Step 1.** Create a file
+**Step 1.** Create a file index.html
 ```
 <!DOCTYPE html>
 <html lang="en">
@@ -272,7 +272,38 @@ Apply it:
 <pre>
   kubectl apply -f nginx-deploy.yaml
 </pre>
-Step 4: Access your page
+
+Step 4: Use port-forwarding or nodePort or LoadBalancer or ClusterIp
+
+**By port-forwarding**
+<pre>
+  kubectl port-forward --address 0.0.0.0 deployment/nginx-deploy 8080:80
+</pre> 
+Access using ec2-ip:8080
+<pre>
+  http://65.1.65.70:8080/
+</pre>
+**By nodePort**
+Cluster should be created using extraPortMapping
+
+create file and apply this file
+<pre>
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodeport-svc
+spec:
+  type: NodePort
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30001
+</pre>
+
+
+Step 5: Access your page
 
 Open your browser and go to:
 <pre>
