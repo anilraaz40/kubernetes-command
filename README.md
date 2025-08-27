@@ -646,6 +646,32 @@ NodeSelector schedules a pod only on nodes with specific labels.
   kubectl label nodes node-name dedicated=database
 </pre>
 <pre>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-nodeselector
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      nodeSelector:
+        dedicated: database
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+
+</pre> 
+
+
+<pre>
 ✅ Summary
 
 Mechanism	Node       Requirement	                Pod Spec Requirement
@@ -656,4 +682,96 @@ Toleration	         Node must have taint	        Pod must have toleration
 </pre>
 
 ### If you are using nodeSelector with labels, but the target node has a taint, the pod will not run unless it also has a matching toleration.
+
+
+## Affinity
+Create pod or deployment 
+<pre>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deploy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: disktype
+                operator: In
+                values:
+                - ssd
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+
+</pre>
+**Step 1.** Label your node with disktype=ssd
+<pre>
+  kubectl label nodes <your-node-name> disktype=ssd
+
+</pre>
+**Step 2.** Apply the YAML:
+<pre>
+  kubectl apply -f nginx-deploy.yaml
+</pre>
+**Step 3.** Check Pods:
+<pre>
+  kubectl get pods -o wide
+</pre>
+
+**1. nodeSelector**
+
+Simplest way to tell which node(s) a Pod can run on.
+
+Pod requires nodes to have exact label match.
+
+Hard rule → If no node has the label, Pod stays Pending.
+
+**2. Node Affinity**
+
+Advanced version of nodeSelector.
+
+**Two modes:**
+
+requiredDuringScheduling → Hard rule (like nodeSelector). Pod stays Pending if no match.
+
+preferredDuringScheduling → Soft rule. Scheduler tries to honor it, but if no match, Pod will still run elsewhere.
+
+Allows operators (In, NotIn, Exists, etc.) and preferences.
+
+**3. Taints & Tolerations**
+
+Node-side mechanism: a taint repels Pods unless they explicitly tolerate it.
+
+Without toleration, Pod cannot run on a tainted node.
+
+Controls where Pods cannot be scheduled unless allowed.
+
+Effects:
+
+NoSchedule → Pod won’t schedule.
+
+PreferNoSchedule → Avoid scheduling if possible.
+
+NoExecute → Evicts running Pods if they don’t tolerate.
+
+**✅ One-liner difference:**
+
+nodeSelector → Pod chooses nodes by exact label.
+
+nodeAffinity → Pod chooses nodes with flexible/advanced rules (hard or soft).
+
+Taints & Tolerations → Node repels Pods unless Pods tolerate the taint.
 
