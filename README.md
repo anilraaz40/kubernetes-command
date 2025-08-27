@@ -317,18 +317,27 @@ or
 
 
 ### ClusterIP
+
+**🔹 What it does:**
+
+It gives your Service a stable internal IP address inside the cluster.
+
+That IP is only reachable within the cluster network (pods, nodes, other services).
+
+It does not expose the Service outside of the cluster (so you can’t access it from your laptop/browser directly).
+
 <pre>
 apiVersion: v1
 kind: Service
 metadata:
-  name: cluster-svc
-  labels:
-    app: nginx
+  name: nginx-clusterip
 spec:
-  ports:
-  - port: 80
   selector:
     app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
 </pre>
 apply 
 <pre>
@@ -338,11 +347,34 @@ To describe
 <pre>
   kubectl describe svc/cluster-svc
 </pre>
+<pre>
+NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+nginx-clusterip   ClusterIP   10.96.85.123    <none>        80/TCP    2m
+</pre> 
 To delete
 <pre>
   kubectl delete svc/cluster-svc
 </pre>
 
+If another Pod tries to connect to http://10.96.85.123:80, it will reach your Nginx app.
+
+**🔹 Use cases**
+
+  Useful for internal communication between microservices (backend ↔ database, frontend ↔ backend).
+
+  Not for external browser access (for that you need NodePort, LoadBalancer, Ingress, or port-forward).
+
+<pre>
+Difference from other types:
+
+ClusterIP (default): Accessible only inside the cluster.
+
+NodePort: Exposes app on each node’s IP at a fixed port (not cloud friendly, manual).
+
+LoadBalancer: Cloud provider gives you a public IP/DNS → easiest way for external users.
+
+Ingress: Adds advanced routing on top of LoadBalancer/NodePort.
+</pre>
 ### LoadBalancer
 <pre>
 apiVersion: v1
