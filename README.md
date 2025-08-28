@@ -775,3 +775,74 @@ nodeAffinity → Pod chooses nodes with flexible/advanced rules (hard or soft).
 
 Taints & Tolerations → Node repels Pods unless Pods tolerate the taint.
 
+### Kubernetes Requests and Limits
+
+**Requests:**
+Minimum resources (CPU/Memory) guaranteed for a container.
+Scheduler uses this value to decide which node the pod can run on.
+Example: requests.memory: "50Mi" → Pod will be placed on a node with at least 50Mi available.
+
+**Limit:**
+Maximum resources (CPU/Memory) a container can use.
+If memory usage > limit → Container gets OOMKilled.
+If CPU usage > limit → Container is throttled (not killed).
+
+Create a pod which stress the memory 
+
+<pre>
+apiVersion: v1
+kind: Pod
+metadata:
+  name: memory-demo-2
+  namespace: mem-example
+spec:
+  containers:
+  - name: memory-demo-2-ctr
+    image: polinux/stress
+    resources:
+      requests:
+        memory: "50Mi"
+      limits:
+        memory: "100Mi"
+    command: ["stress"]
+    args: ["--vm", "1", "--vm-bytes", "250M", "--vm-hang", "1"]
+</pre>
+output
+<pre>
+kubectl get pods -n mem-example
+  
+NAME            READY   STATUS      RESTARTS      AGE
+memory-demo-2   0/1     OOMKilled   2 (18s ago)   26s
+</pre>
+OOM (Out of memory)
+
+If a container tries to use more memory than its limit, the Kubernetes kubelet kills the container with status OOMKilled, even though the node might have free memory.
+
+The Below pod will be scheduled
+<pre>
+apiVersion: v1
+kind: Pod
+metadata:
+  name: memory-demo
+  namespace: mem-example
+spec:
+  containers:
+  - name: memory-demo-ctr
+    image: polinux/stress
+    resources:
+      requests:
+        memory: "100Mi"
+      limits:
+        memory: "200Mi"
+    command: ["stress"]
+    args: ["--vm", "1", "--vm-bytes", "150M", "--vm-hang", "1"]
+</pre>
+<pre>
+kubectl get pods -n mem-example
+  
+NAME            READY   STATUS      RESTARTS      AGE
+memory-demo     1/1     Running     0             18s
+memory-demo-2   0/1     OOMKilled   4 (53s ago)   103s
+root@ip-172-31-32-126:~# 
+</pre>
+
