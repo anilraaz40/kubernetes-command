@@ -891,7 +891,7 @@ spec:
         port: 8080
       initialDelaySeconds: 15
       periodSeconds: 10
-</pre><
+</pre>
 
 liveness command
 <pre>
@@ -920,7 +920,7 @@ spec:
 
 liveness-tcp
 <pre>
-  apiVersion: v1
+apiVersion: v1
 kind: Pod
 metadata:
   name: tcp-pod
