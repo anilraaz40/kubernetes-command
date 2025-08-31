@@ -938,3 +938,17 @@ spec:
       initialDelaySeconds: 10
       periodSeconds: 5
 </pre>
+
+### RBAC (Role Based Access Control Kubernetes)
+
+<pre>
+  kubernetes auth can-i get pod
+</pre>
+<pre>
+  kubernetes auth whoami
+</pre>
+<pre>
+  kubernets auth can-i get pod as krish
+</pre>
+
+
