@@ -951,4 +951,51 @@ spec:
   kubernets auth can-i get pod as krish
 </pre>
 
+# Certificate TLS
+
+### Kubernetes CertificateSigningRequest
+1. Generate a private key and CSR:
+   <pre>
+      openssl genrsa -out my-user.key 2048
+      openssl req -new -key my-user.key -subj "/CN=my-user" -out my-user.csr
+   </pre>
+
+
+2. Create csr.yaml file
+
+<pre>
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: my-user-csr
+spec:
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRV...   # base64-encoded CSR
+  signerName: kubernetes.io/kube-apiserver-client
+  expirationSeconds: 31536000  # (optional) 1 year = 365*24*60*60
+  usages:
+  - digital signature
+  - key encipherment
+  - client auth
+</pre>
+
+3. Base64 encode the CSR (remove newlines):
+<pre>
+  cat my-user.csr | base64 | tr -d '\n'
+</pre>
+
+4. Put that string under spec.request in the YAML.
+
+5. Apply the CSR:
+   <pre>
+     kubectl apply -f csr.yaml
+
+   </pre>
+  
+6. Approve certificate
+   <pre> kubectl certificate approve my-user-csr </pre>
+
+   <pre>kubectl get csr </pre>
+   <pre> kubectl get csr adam -o yaml > issuecert.yaml </pre>
+
+   
 
