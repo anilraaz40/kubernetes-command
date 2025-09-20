@@ -1052,5 +1052,80 @@ ServiceAccount → Maps to a namespace + ServiceAccount.
 roleRef must exactly reference the Role you created.
 </p>
 
+## Custom context
+### To create a context in Kubernetes for a user named adam, you need three parts:
+1. A cluster (already defined in kubeconfig or you must create one).
+2. A user (here adam).
+3. The context that ties them together.
+
+### Steps
+1. Add the user adam to kubeconfig
+   (Example: using a client certificate for authentication)
+   <pre>
+     kubectl config set-credentials adam --client-certificate=/path/to/adam.crt --client-key=/path/to/adam.key
+   </pre>
+2. Create a context that uses adam
+   Suppose the cluster name is my-cluster and namespace is default:
+   <pre>
+     kubectl config set-context adam-context --cluster=my-cluster --namespace=default --user=adam
+   </pre>
+3. Switch to the new context
+   <pre>
+     kubectl config use-context adam-context
+   </pre>
+4. Verify
+   <pre>
+     kubectl config get-contexts
+     kubectl config current-context
+   </pre>
+
+<img width="998" height="738" alt="image" src="https://github.com/user-attachments/assets/677edfb2-f05f-4b81-92b4-34c27771497e" />
+
+## ClusterRoleBinding
+
+### Example: Give Adam admin access across the cluster
+1. Create a role 
+<pre>
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: adam-cluster-role
+  rules:
+  - apiGroups: [""]   # "" means the core API group
+    resources: ["pods", "services", "configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+
+</pre>
+<pre>
+  kubectl apply -f role.yaml
+</pre>
+This role lets Adam manage pods, services, and configmaps.
+
+2. Bind the role to Adam
+<pre>
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: adam-binding
+  subjects:
+  - kind: User
+    name: adam           
+    apiGroup: rbac.authorization.k8s.io
+  roleRef:
+    kind: ClusterRole
+    name: adam-cluster-role  
+    apiGroup: rbac.authorization.k8s.io
+
+   </pre>
+   <pre>
+     kubectl apply -f adam-binding.yaml
+   </pre>
+
+3. Test with Adam’s context
+   <pre>
+       kubectl config use-context adam-context
+       kubectl get pods -A
+
+   </pre>
    
 
