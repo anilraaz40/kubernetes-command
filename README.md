@@ -997,5 +997,60 @@ spec:
    <pre>kubectl get csr </pre>
    <pre> kubectl get csr adam -o yaml > issuecert.yaml </pre>
 
+## Resource (pod) accessing using custom user
+
+ ###Create Role yaml
+   
+  A Role defines what actions are allowed on which resources within a namespace
+
+<pre>
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: demo-ns
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+
+</pre>
+
+This role allows get, list, and watch access to Pods in the demo-ns namespace.
+
+###RoleBinding YAML
+
+A RoleBinding attaches the above Role to a user, group, or ServiceAccount.
+<pre>
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods-binding
+  namespace: demo-ns
+subjects:
+- kind: User
+  name: my-user       # Must match CN in the certificate
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
+</pre>
+
+<p>
+###Key Points
+
+subjects.kind can be:
+
+User → Maps to a client certificate CN (like my-user from your CSR).
+
+Group → Maps to the CSR’s O (organization field).
+
+ServiceAccount → Maps to a namespace + ServiceAccount.
+
+roleRef must exactly reference the Role you created.
+</p>
+
    
 
