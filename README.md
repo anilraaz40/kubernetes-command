@@ -1161,18 +1161,18 @@ return like this NotReady
 </pre>
 
 2.  install calico CNI
-   <pre>
+<pre>
        kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.3/manifests/calico.yaml
-   </pre>
+</pre>
 3. Verify Calico installation
-   <pre>
-        NAMESPACE     NAME                READY   STATUS    RESTARTS   AGE
-        kube-system   calico-node-2xcf4   1/1     Running   0          57s
-        kube-system   calico-node-gkqkg   1/1     Running   0          57s
-        kube-system   calico-node-j44hp   1/1     Running   0          57s
-   </pre>
+<pre>
+       NAMESPACE     NAME                READY   STATUS    RESTARTS   AGE
+       kube-system   calico-node-2xcf4   1/1     Running   0          57s
+       kube-system   calico-node-gkqkg   1/1     Running   0          57s
+       kube-system   calico-node-j44hp   1/1     Running   0          57s 
+</pre>
 4. Create 3 pods and 3 services
-   <pre>
+<pre>
       apiVersion: v1
       kind: Pod
       metadata:
@@ -1268,24 +1268,24 @@ return like this NotReady
               - name: http
                 containerPort: 3306
                 protocol: TCP
-   </pre>
-   Now exec in pods and try to make connection with other pods
-   <pre>
+</pre>
+Now exec in pods and try to make connection with other pods
+<pre>
      kubectl exec -it frontend -- bash
-   </pre>
-   <pre>
+</pre>
+<pre>
      curl backend 
-   </pre>
-   <pre>
+</pre>
+<pre>
      apt-get update && apt-get install telnet -y
      telnet db 3306
-   </pre>
-   It will ablne to make the connection
+</pre>
+It will ablne to make the connection
 
-  ### Now apply the network policy which only backend will able to make connection with db
+### Now apply the network policy which only backend will able to make connection with db
 
-  apply this np
-  <pre>
+apply this np
+<pre>
     apiVersion: networking.k8s.io/v1
     kind: NetworkPolicy
     metadata:
@@ -1303,7 +1303,7 @@ return like this NotReady
               role: backend
         ports:
         - port: 3306
-  </pre>
-Now again exec into the pods and try to make connection, now only backend pod will able to make connection with db
+</pre>
+Now again exec into the pods and try to make connection, now only backend pod will able to make connection with db, not frontend pod
 
    
