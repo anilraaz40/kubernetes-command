@@ -1128,4 +1128,182 @@ This role lets Adam manage pods, services, and configmaps.
 
    </pre>
    
+# Network Policies
+### What is a network policy
+Network policy allows you to control the Inbound and Outbound traffic to and from the cluster. For example, you can specify a deny-all network policy that restricts all incoming traffic to the cluster, or you can create an allow-network policy that will only allow certain services to be accessed by certain pods on a specific port.
+<img width="1407" height="605" alt="image" src="https://github.com/user-attachments/assets/1acb64e7-99ca-436b-a413-3adb2740a72f" />
 
+1. Create a cluster
+
+<pre>
+  kind: Cluster
+  apiVersion: kind.x-k8s.io/v1alpha4
+  nodes:
+  - role: control-plane
+    extraPortMappings:
+    - containerPort: 30001
+      hostPort: 30001
+  - role: worker
+  - role: worker
+  networking:
+    disableDefaultCNI: true
+    podSubnet: 192.168.0.0/16
+</pre>
+<pre>
+  kubectl get nodes -o wide
+</pre> 
+return like this NotReady
+<pre>
+  NAME                STATUS      ROLES           AGE    VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION    CONTAINER-RUNTIME
+  dev-control-plane   NotReady    control-plane   4m     v1.25.0   172.18.0.2    <none>        Ubuntu 22.04.1 LTS   5.10.0-17-amd64   containerd://1.6.7
+  dev-worker          NotReady    <none>          4m     v1.25.0   172.18.0.4    <none>        Ubuntu 22.04.1 LTS   5.10.0-17-amd64   containerd://1.6.7
+  dev-worker2         NotReady    <none>          4m     v1.25.0   172.18.0.3    <none>        Ubuntu 22.04.1 LTS   5.10.0-17-amd64   containerd://1.6.7
+</pre>
+
+2.  install calico CNI
+   <pre>
+       kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.3/manifests/calico.yaml
+   </pre>
+3. Verify Calico installation
+   <pre>
+        NAMESPACE     NAME                READY   STATUS    RESTARTS   AGE
+        kube-system   calico-node-2xcf4   1/1     Running   0          57s
+        kube-system   calico-node-gkqkg   1/1     Running   0          57s
+        kube-system   calico-node-j44hp   1/1     Running   0          57s
+   </pre>
+4. Create 3 pods and 3 services
+   <pre>
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: frontend
+        labels:
+          role: frontend
+      spec:
+        containers:
+        - name: nginx
+          image: nginx
+          ports:
+          - name: http
+            containerPort: 80
+            protocol: TCP
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: frontend
+        labels:
+          role: frontend
+      spec:
+        selector:
+          role: frontend
+        ports:
+        - protocol: TCP
+          port: 80
+          targetPort: 80
+      ---
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: backend
+        labels:
+          role: backend
+      spec:
+        containers:
+        - name: nginx
+          image: nginx
+          ports:
+          - name: http
+            containerPort: 80
+            protocol: TCP
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: backend
+        labels:
+          role: backend
+      spec:
+        selector:
+          role: backend
+        ports:
+        - protocol: TCP
+          port: 80
+          targetPort: 80
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: db
+        labels:
+          name: mysql
+      spec:
+        selector:
+          name: mysql
+        ports:
+        - protocol: TCP
+          port: 3306
+          targetPort: 3306
+      ---
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: mysql
+        labels:
+          name: mysql
+      spec:
+        containers:
+          - name: mysql
+            image: mysql:latest
+            env:
+              - name: "MYSQL_USER"
+                value: "mysql"
+              - name: "MYSQL_PASSWORD"
+                value: "mysql"
+              - name: "MYSQL_DATABASE"
+                value: "testdb"
+              - name: "MYSQL_ROOT_PASSWORD"
+                value: "verysecure"
+            ports:
+              - name: http
+                containerPort: 3306
+                protocol: TCP
+   </pre>
+   Now exec in pods and try to make connection with other pods
+   <pre>
+     kubectl exec -it frontend -- bash
+   </pre>
+   <pre>
+     curl backend 
+   </pre>
+   <pre>
+     apt-get update && apt-get install telnet -y
+     telnet db 3306
+   </pre>
+   It will ablne to make the connection
+
+  ### Now apply the network policy which only backend will able to make connection with db
+
+  apply this np
+  <pre>
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: db-test
+    spec:
+      podSelector:
+        matchLabels:
+          name: mysql
+      policyTypes:
+      - Ingress
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels:
+              role: backend
+        ports:
+        - port: 3306
+  </pre>
+Now again exec into the pods and try to make connection, now only backend pod will able to make connection with db
+
+   
