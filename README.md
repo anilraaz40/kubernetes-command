@@ -1337,24 +1337,35 @@ for worker node SG inbound rule
 4. Prepare Linux kernel settings & disable swap (ALL NODES)
 ```
   # disable swap immediately and persistently
-  sudo swapoff -a
-  sudo sed -i '/ swap / s/^/#/' /etc/fstab
-  
-  # load required kernel modules on boot
-  cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-  overlay
-  br_netfilter
-  EOF
-  sudo modprobe overlay
-  sudo modprobe br_netfilter
-  
-  # sysctl params required by kubelet/container runtimes
-  cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
-  net.bridge.bridge-nf-call-iptables  = 1
-  net.bridge.bridge-nf-call-ip6tables = 1
-  net.ipv4.ip_forward                 = 1
-  EOF
-  sudo sysctl --system
+  swapoff -a
+  sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+```
+Forwarding IPv4 and letting iptables see bridged traffic
+```
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# sysctl params required by setup, params persist across reboots
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+
+# Apply sysctl params without reboot
+sudo sysctl --system
+
+# Verify that the br_netfilter, overlay modules are loaded by running the following commands:
+lsmod | grep br_netfilter
+lsmod | grep overlay
+
+# Verify that the net.bridge.bridge-nf-call-iptables, net.bridge.bridge-nf-call-ip6tables, and net.ipv4.ip_forward system variables are set to 1 in your sysctl config by running the following command:
+sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
 ```
 5. Install containerd (ALL NODES)
 ```
@@ -1422,9 +1433,9 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 curl https://raw.githubusercontent.com/projectcalico/calico/v3.30.3/manifests/calico.yaml -O
 kubectl apply -f calico.yaml
 ```
-13. Run this command to generate the Token in master node
+13. Run this command to generate the Token in master node (Master Node only)
 ```
-kubeadm token create --print-join-command (Master Node only)
+kubeadm token create --print-join-command 
 ```
 14. Copy token command from master node and run in worker node (worker node)
 15. Final verification (Master node)
