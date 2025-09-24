@@ -1306,4 +1306,132 @@ apply this np
 </pre>
 Now again exec into the pods and try to make connection, now only backend pod will able to make connection with db, not frontend pod
 
-   
+# Setup a Multi Node (EC2) Kubernetes Cluster Using Kubeadm
+
+1. Create 2 Security groups 1st for master node and second for worker node
+for master node SG inblund rule
+<pre>	
+  TCP 6443
+  TCP 10250
+  TCP 10259
+  TCP 30000-32767
+  TCP 10257
+  SSH 22
+  TCP 2379-2380
+</pre>
+for worker node SG inbound rule
+<pre>	
+  TCP 6443
+  TCP 10250
+  TCP 10259
+  TCP 30000-32767
+  SSH 22
+  TCP 2379-2380
+</pre>
+
+2. Create 3 EC2 instance attach master SG for master EC2 and attach worker SG for worker node(EC2)
+3. Update (All Nodes)
+<pre>
+  sudo apt update && sudo apt upgrade -y
+</pre>
+4. Prepare Linux kernel settings & disable swap (ALL NODES)
+```
+  # disable swap immediately and persistently
+  sudo swapoff -a
+  sudo sed -i '/ swap / s/^/#/' /etc/fstab
+  
+  # load required kernel modules on boot
+  cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+  overlay
+  br_netfilter
+  EOF
+  sudo modprobe overlay
+  sudo modprobe br_netfilter
+  
+  # sysctl params required by kubelet/container runtimes
+  cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+  net.bridge.bridge-nf-call-iptables  = 1
+  net.bridge.bridge-nf-call-ip6tables = 1
+  net.ipv4.ip_forward                 = 1
+  EOF
+  sudo sysctl --system
+
+</pre>
+```
+5. Install containerd (ALL NODES)
+```
+# install prerequisites
+sudo apt install -y ca-certificates curl gnupg lsb-release
+
+# install containerd
+sudo apt update
+sudo apt install -y containerd
+
+# create config and set systemd cgroup
+sudo mkdir -p /etc/containerd
+sudo containerd config default | sudo tee /etc/containerd/config.toml
+
+# set SystemdCgroup = true (ensures containerd uses systemd cgroup driver)
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml || true
+
+# restart & enable containerd
+sudo systemctl restart containerd
+sudo systemctl enable containerd
+```
+6. Install runc (ALL NODES)
+```
+curl -LO https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64
+sudo install -m 755 runc.amd64 /usr/local/sbin/runc
+```
+7. install cni plugin (ALL NODES)
+```
+curl -LO https://github.com/containernetworking/plugins/releases/download/v1.5.0/cni-plugins-linux-amd64-v1.5.0.tgz
+sudo mkdir -p /opt/cni/bin
+sudo tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-v1.5.0.tgz
+```
+8. Install kubeadm, kubelet, kubectl (ALL NODES)
+```
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt-get update
+sudo apt-get install -y kubelet=1.29.6-1.1 kubeadm=1.29.6-1.1 kubectl=1.29.6-1.1 --allow-downgrades --allow-change-held-packages
+sudo apt-mark hold kubelet kubeadm kubectl
+
+kubeadm version
+kubelet --version
+kubectl version --client
+```
+9. Configure crictl to work with containerd (ALL NODES)
+```
+sudo crictl config runtime-endpoint unix:///var/run/containerd/containerd.sock
+```
+10. initialize control plane (Master Node only)
+```
+kubeadm init --apiserver-advertise-address=<master-private-ip> --pod-network-cidr=192.168.0.0/16
+```
+11. Prepare kubeconfig (Master Node only)
+```
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+12. Install calico (Master Node only)
+```
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.30.3/manifests/calico.yaml -O
+kubectl apply -f calico.yaml
+```
+13. Run this command to generate the Token in master node
+```
+kubeadm token create --print-join-command (Master Node only)
+```
+14. Copy token command from master node and run in worker node (worker node)
+15. Final verification (Master node)
+```
+kubectl get nodes
+kubectl get pods -n kube-system
+kubectl cluster-info
+```
