@@ -1355,8 +1355,6 @@ for worker node SG inbound rule
   net.ipv4.ip_forward                 = 1
   EOF
   sudo sysctl --system
-
-</pre>
 ```
 5. Install containerd (ALL NODES)
 ```
