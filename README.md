@@ -1444,3 +1444,69 @@ kubectl get nodes
 kubectl get pods -n kube-system
 kubectl cluster-info
 ```
+# Volume
+<img width="797" height="560" alt="image" src="https://github.com/user-attachments/assets/97a3dd03-c7c1-4e84-b27f-bf15b423af51" />
+
+### Docker volume
+1. install docker and clone any github project
+sample project
+```
+git clone https://github.com/docker/getting-started-app.git
+```
+2. create Dockerfile
+```
+FROM node:18-alpine
+WORKDIR /app
+COPY . .
+RUN yarn install --production
+CMD ["node", "src/index.js"]
+EXPOSE 3000
+```
+3. Create image
+```
+docker build -t myapp .
+```
+4. Craete docker volume
+```
+docker volume create vol_data
+docker volume ls
+```
+5. Create container from docker image
+```
+docker run -d -p3000:3000 -vol_data:/app --name=todo myapp
+```
+All volume data is available in this folder
+```
+/var/lib/docker/volumes/vol_data/_data/
+```
+6. list container
+```
+docker ps
+```
+7. Exec into container
+```
+docker exec -it <container_id> sh
+```
+8. Create any file or anything just to check that data is available or not after container delete or stop,
+sample here i created one folder
+```
+mkdir myfolder
+```
+9. exit from container
+```
+exit
+```
+11. Delete the container
+```
+docker rm -f <container_id>
+```
+12. again create a new container and check sample data is availble or not
+```
+docker run -d -p3000:3000 -vol_data:/app --name=newtodo myapp
+docker exec -it <container_id> sh
+ls
+```
+Data will be there which i created a sample folder
+
+
+
