@@ -1508,5 +1508,105 @@ ls
 ```
 Data will be there which i created a sample folder
 
+### Kubernetes Volume
+<img width="1073" height="763" alt="image" src="https://github.com/user-attachments/assets/515eabec-cec9-4094-a851-4b755c783bcf" />
 
+1. create a cluster with extraMount
+```
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: /mnt/data/pv1   # EC2 host path
+        containerPath: /mnt/data/pv1   # inside kind node
+  - role: worker
+    extraMounts:
+      - hostPath: /mnt/data/pv1
+        containerPath: /mnt/data/pv1
+  - role: worker
+    extraMounts:
+      - hostPath: /mnt/data/pv1
+        containerPath: /mnt/data/pv1
+```
+2. create PV
+```
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data/pv1"
+  persistentVolumeReclaimPolicy: Retain
+```
+3. Create PVC
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: local-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+  storageClassName: ""
+```
+4. create pod
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+spec:
+  containers:
+    - name: nginx
+      image: nginx
+      ports:
+        - containerPort: 80
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: mydata
+  volumes:
+    - name: mydata
+      persistentVolumeClaim:
+        claimName: local-pvc
+```
+5. exec into pod
+```
+kubectl exec -it nginx-pod -- bash
 
+```
+6. change something in data
+```
+echo "Hello EC2" > /usr/share/nginx/html/index.html
+```
+7. exit from pod
+```
+exit
+```
+8. Directly check on EC2
+```
+cat /mnt/data/pv1/index.html
+```
+✅ You’ll see:
+<pre>
+  Hello EC2
+</pre>
+
+How data is going from pod to EC2 local storage
+<pre>
+  -> Pod container → Volume mount (/usr/share/nginx/html)
+  → PVC (local-pvc)
+  → PV (local-pv)
+  → hostPath (/mnt/data/pv1 inside kind node)
+  → bind mount
+  → /mnt/data/pv1 on EC2 host
+
+</pre>
