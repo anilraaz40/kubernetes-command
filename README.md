@@ -1610,3 +1610,245 @@ How data is going from pod to EC2 local storage
   → /mnt/data/pv1 on EC2 host
 
 </pre>
+
+
+# Ingress
+
+vi kind-config.yaml
+```
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 80   # expose http
+        hostPort: 80
+      - containerPort: 443  # expose https
+        hostPort: 443
+```
+apply file
+```
+kind create cluster --name demo --config kind-config.yaml
+kubectl get nodes
+
+```
+
+```
+kubectl label node <your-node-name> ingress-ready=true
+
+```
+Install Ingress Controller (NGINX)
+```
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.9.6/deploy/static/provider/kind/deploy.yaml
+
+```
+### Create Simple Web Apps
+
+We’ll use two deployments + services.
+
+app1.yaml
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app1
+  template:
+    metadata:
+      labels:
+        app: app1
+    spec:
+      containers:
+      - name: app1
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: html
+        configMap:
+          name: app1-html
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app1
+spec:
+  selector:
+    app: app1
+  ports:
+  - port: 80
+    targetPort: 80
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app1-html
+data:
+  index.html: |
+    <h1>Welcome to App1</h1>
+```
+Create app2.yaml
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app2
+  template:
+    metadata:
+      labels:
+        app: app2
+    spec:
+      containers:
+      - name: app2
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: html
+        configMap:
+          name: app2-html
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app2
+spec:
+  selector:
+    app: app2
+  ports:
+  - port: 80
+    targetPort: 80
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app2-html
+data:
+  index.html: |
+    <h1>Welcome to App2</h1>
+```
+apply file
+```
+kubectl apply -f app1.yaml
+kubectl apply -f app2.yaml
+```
+### Create Ingress Rule path-Based-Routing
+Create ingress.yaml
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /app1
+        pathType: Prefix
+        backend:
+          service:
+            name: app1
+            port:
+              number: 80
+      - path: /app2
+        pathType: Prefix
+        backend:
+          service:
+            name: app2
+            port:
+              number: 80
+```
+
+apply
+```
+kubectl apply -f ingress.yaml
+
+```
+
+
+### Test Website
+Check ingress:
+```
+kubectl get ingress
+```
+### Now open browser:
+```
+http://<EC2_PUBLIC_IP>/app1
+```
+Welcome to App1
+```
+http://<EC2_PUBLIC_IP>/app2
+```
+Welcome to App2
+
+## OR 
+
+### Ingress for Host-Based Routing
+Create ingress-host.yaml
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo-ingress-host
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app1.flipkart.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app1
+            port:
+              number: 80
+  - host: app2.flipkart.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app2
+            port:
+              number: 80
+```
+apply file
+```
+kubectl apply -f ingress-host.yaml
+```
+### DNS Resolution for Testing
+
+Since you don’t own real domains yet, you can trick your local machine (or EC2 itself) to resolve these hostnames.
+
+On your local laptop/PC, edit the /etc/hosts file:
+```
+<EC2_PUBLIC_IP> app1.flipkart.com
+<EC2_PUBLIC_IP> app2.flipkart.com
+```
+### Test in Browser
+```
+http://app1.flipkart.com → shows Welcome to App1
+
+http://app2.flipkart.com → shows Welcome to App2)
+```
+
