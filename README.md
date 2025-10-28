@@ -3,14 +3,17 @@
 ### create cluster using yaml
 
 
-<pre>
+```
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
-  - role: control-plane
-  - role: worker
-  - role: worker
-</pre>
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 30001
+    hostPort: 30001
+- role: worker
+- role: worker
+```
 apply yaml
 <pre>
   kind create cluster --name demo-cluster --config kind-cluster.yaml
