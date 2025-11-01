@@ -15,17 +15,22 @@ nodes:
 - role: worker
 ```
 apply yaml
-<pre>
+```
   kind create cluster --name demo-cluster --config kind-cluster.yaml
 
-</pre>
+```
 ### create cluster using command
-<pre>
+```
   kind create cluster --name demo-cluster
+```
+## Pod
+A Pod is the smallest deployable unit in Kubernetes.
+It runs one or more containers that share the same network namespace and storage.
+Pods have their own IP address and run on a single node.
+Kubernetes schedules, manages, and restarts Pods, not individual containers.
 
-</pre>
 ### create pod using yaml
-<pre>
+```
 apiVersion: v1
 kind: Pod
 metadata:
@@ -38,16 +43,26 @@ spec:
     image: nginx:latest
     ports:
     - containerPort: 80
-</pre>
+```
 
 ### create pod using command
-<pre>
+```
   kubectl run nginx-pod --image=nginx --port=80
-</pre> 
+```
+## Replicas
+A replica is one instance of a Pod.
+Replica count ensures the desired number of identical Pods are always running.
+Kubernetes uses a ReplicaSet/Deployment to maintain these replicas.
+If a Pod dies, the ReplicaSet automatically creates a new one to keep the count constant.
+## ReplicaSet
+A ReplicaSet ensures a specified number of identical Pods are always running.
+It continuously monitors Pods and replaces any that fail.
+It uses selectors to identify which Pods it manages.
+Deployments internally use ReplicaSets to handle scaling and rolling updates.
 
 ### create replicas using yaml
 
-<pre>
+```
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
@@ -70,16 +85,16 @@ spec:
           ports:
             - containerPort: 80
 
-</pre>
+```
 
 Scale replicas by command 
-<pre>
-  kubectl scale rs nginx-rs --replicas=2
-</pre>
+```
+kubectl scale rs nginx-rs --replicas=2
+```
 Scale replicas by editing yaml
-<pre>
+```
   kubectl edit rs nginx-rs
-</pre>
+```
 Then update:
 <pre>
   spec:
@@ -87,9 +102,13 @@ Then update:
 
 </pre>
 
-### Deployment 
+## Deployment 
+A Deployment is a higher-level Kubernetes object that manages ReplicaSets and Pods.
+It provides rolling updates, rollbacks, and version control for your application.
+It ensures the desired number of replicas always run with the correct Pod template.
+Deployments make updating and scaling applications safe and automatic.
 
-<pre>
+```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -112,25 +131,30 @@ spec:
           ports:
             - containerPort: 80
 
-</pre>
+```
 apply deployment
-<pre>
+```
   kubectl apply -f deployment.yaml
-</pre>
+```
 change the version of image
-<pre>
+```
   kubectl set image deployment/nginx-deploy frontend=nginx:1.25
-</pre>
+```
 check the version
-<pre>
+```
   kubectl describe deployment nginx-deploy
-</pre>
+```
 rollback 
-<pre>
+```
   kubectl rollout undo deployment/nginx-deploy
-</pre>
+```
 
 ## NodePort
+A NodePort is a Kubernetes Service type that exposes your application on a port of every worker node.
+It opens a fixed port (30000–32767) on each node and forwards traffic to the target Pods.
+You can access the app using NodeIP:NodePort from outside the cluster.
+It is the simplest way to make a Pod reachable externally.
+
 Step 1
 If you use a Kind cluster, you must perform the port mapping to expose the container port. Use the below config to create a new Kind cluster
 
@@ -141,7 +165,8 @@ Your Deployment runs Nginx pods inside the cluster.
 By default, those pods are not accessible from your browser because they only have a ClusterIP.
 
 By creating a NodePort Service, Kubernetes opens a port on the node (e.g., 30001) that forwards traffic to your pods.
-<pre>
+
+```
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
@@ -151,9 +176,10 @@ nodes:
     hostPort: 30001
 - role: worker
 - role: worker
-</pre>
+```
+
 Step 2: Create Deployment
-<pre>
+```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -175,9 +201,10 @@ spec:
           image: nginx:latest   
           ports:
             - containerPort: 80
-</pre>
+```
+
 Step 3: Create NodePort
-<pre>
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -190,19 +217,21 @@ spec:
     - port: 80
       targetPort: 80
       nodePort: 30001
-</pre>
+```
+
 To check the Services
-<pre>
+```
 kubectl get svc
-</pre>
+```
 To Describe the NodePort Services
-<pre>
+```
   kubectl describe svc nodeport-svc
-</pre>
+```
+
 Check in the browser EC2 Ip address with port (30001)
 <img width="1886" height="788" alt="image" src="https://github.com/user-attachments/assets/40a365e4-5e90-4e37-8344-f12280cb1e94" />
 
-## Custome html page or other page 
+## Custome html page
 **Step 1.** Create a file index.html
 ```
 <!DOCTYPE html>
@@ -234,13 +263,13 @@ Check in the browser EC2 Ip address with port (30001)
 ```
 
 **Step 2.** Create a ConfigMap from this file
-<pre>
+```
   kubectl create configmap nginx-html --from-file=index.html
-</pre>
+```
 
 **Step 3:** Update your Deployment to mount the ConfigMap
 
-<pre>
+```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -270,27 +299,27 @@ spec:
           configMap:
             name: nginx-html
 
-</pre>
+```
 Apply it:
-<pre>
+```
   kubectl apply -f nginx-deploy.yaml
-</pre>
+```
 
 Step 4: Use port-forwarding or nodePort or LoadBalancer or ClusterIp
 
 **By port-forwarding**
-<pre>
+```
   kubectl port-forward --address 0.0.0.0 deployment/nginx-deploy 8080:80
-</pre> 
+```
 Access using ec2-ip:8080
-<pre>
+```
   http://65.1.65.70:8080/
-</pre>
+```
 **By nodePort**
 Cluster should be created using extraPortMapping
 
 create file and apply this file
-<pre>
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -303,7 +332,7 @@ spec:
     - port: 80
       targetPort: 80
       nodePort: 30001
-</pre>
+```
 
 
 Step 5: Access your page
@@ -320,16 +349,13 @@ or
 
 
 ### ClusterIP
-
-**🔹 What it does:**
-
-It gives your Service a stable internal IP address inside the cluster.
-
-That IP is only reachable within the cluster network (pods, nodes, other services).
-
+ClusterIP is the default Kubernetes Service type used for internal communication.
+It gives a stable internal IP address so Pods can talk to each other inside the cluster.
+It cannot be accessed from outside the cluster.
+Used for internal services like backend-to-database communication.
 It does not expose the Service outside of the cluster (so you can’t access it from your laptop/browser directly).
 
-<pre>
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -341,23 +367,23 @@ spec:
     - port: 80
       targetPort: 80
   type: ClusterIP
-</pre>
+```
 apply 
-<pre>
+```
   kubectl apply -f cluster.yaml 
-</pre>
+```
 To describe
-<pre>
+```
   kubectl describe svc/cluster-svc
-</pre>
+```
 <pre>
 NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
 nginx-clusterip   ClusterIP   10.96.85.123    <none>        80/TCP    2m
 </pre> 
 To delete
-<pre>
+```
   kubectl delete svc/cluster-svc
-</pre>
+```
 
 If another Pod tries to connect to http://10.96.85.123:80, it will reach your Nginx app.
 
@@ -379,7 +405,7 @@ LoadBalancer: Cloud provider gives you a public IP/DNS → easiest way for exter
 Ingress: Adds advanced routing on top of LoadBalancer/NodePort.
 </pre>
 ### LoadBalancer
-<pre>
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -392,10 +418,10 @@ spec:
   - port: 80
   selector:
     env: demo
-</pre>
+```
 
 ### ExternalName
-<pre>
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -404,11 +430,11 @@ metadata:
 spec:
   type: ExternalName
   externalName: my.api.example.com
-</pre>
+```
 
 ## Multi-container
 create a pod which do some work and depend on other work
-<pre>
+```
 apiVersion: v1
 kind: Pod
 metadata:
@@ -432,24 +458,24 @@ spec:
     image: busybox:1.28
     command: ['sh', '-c']
     args: ['until nslookup mydb.default.svc.cluster.local; do echo waiting for mydb; sleep 2; done']
-</pre>
+```
 apply the pod and check the status
-<pre>
+```
   kubectl apply -f pod.yaml
   kubectl get pods
-</pre>
+```
 It will show init 0/1
 
 Now check the logs
 
-<pre>
+```
   kubectl logs myapp-pod -c init-myservice
-</pre>
+```
 it will diplay like can't resolved
 <img width="1446" height="342" alt="image" src="https://github.com/user-attachments/assets/885ef551-8aeb-4961-8ec3-3fb128b077ac" />
 
 Now create a deployment and apply the deployment
-<pre>
+```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -468,10 +494,10 @@ spec:
       - name: myservice
         image: busybox:1.28
         command: ['sh', '-c', 'echo myservice is ready && sleep 3600']
-</pre>
+```
 
 Create a service and expose the service
-<pre>
+```
 apiVersion: v1
 kind: Service
 metadata:
@@ -482,26 +508,31 @@ spec:
   ports:
     - port: 80
       targetPort: 80
-</pre>
+```
 check the pod now it should be running
-<pre>
+```
   kubectl get pod myapp-pod
-</pre>
+```
 <pre>
   NAME         READY   STATUS    RESTARTS   AGE
   myapp-pod    1/1     Running   0          2m
 
 </pre>
 Now describe the pod
-<pre>
+```
   kubectl logs myapp-pod -c init-myservice
-</pre>
+```
 it should be deplay like
 <img width="1128" height="154" alt="image" src="https://github.com/user-attachments/assets/76f2585f-2097-4c23-b8bc-7fbcc840a732" />
 
 ## DaemonSet
-create a file and appply this file
-<pre>
+A DaemonSet ensures that one Pod runs on every node (or on selected nodes) in the cluster.
+When new nodes are added, the DaemonSet automatically adds Pods to them.
+Commonly used for node-level agents like log collectors and monitoring tools.
+If a node is removed, the DaemonSet removes the Pod from it.
+
+**create a file and appply this file**
+```
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -520,7 +551,7 @@ spec:
         image: busybox
         command: ["sh", "-c", "while true; do echo Running on $(hostname); sleep 10; done"]
 
-</pre>
+```
 run this command to check pod running
 <pre>
   kubectl get pods -o wide
@@ -596,6 +627,18 @@ You’ll see logs like:
 Sat Aug 24 11:45:01 UTC 2025
 Hello from Kubernetes CronJob!
 
+</pre>
+
+<pre>
+✅ Why two different versions?
+
+Because Kubernetes organizes resources into API groups.
+
+Resource Type	              API Group	        apiVersion
+Pod, Service, ConfigMap	    core	            v1
+Deployment, StatefulSet	    apps	            apps/v1
+Ingress	                    networking.k8s.io	networking.k8s.io/v1
+CronJob	                    batch	            batch/v1
 </pre>
 
 ## Taint & Tolerant & nodeSelector
