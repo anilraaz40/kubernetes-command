@@ -553,9 +553,9 @@ spec:
 
 ```
 run this command to check pod running
-<pre>
+```
   kubectl get pods -o wide
-</pre>
+```
 output should be like this
 <pre>
 NAME             READY   STATUS    NODE
@@ -564,12 +564,17 @@ my-daemon-xxx2   1/1     Running   worker-node-2
 
 </pre>
 Check logs of one pod
-<pre>
+```
   kubectl logs my-daemon-aaa1
-</pre>
+```
 ## JOB
-create file and apply
-<pre>
+A Job runs a task once (or a set number of times) until it successfully completes.
+It ensures Pods run to completion instead of running continuously.
+If a Pod fails, the Job creates a new one to finish the task.
+Used for batch tasks like backups, data processing, or one-time scripts.
+
+**create file and apply**
+```
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -583,19 +588,25 @@ spec:
         command: ["echo", "Hello from Kubernetes Job!"]
       restartPolicy: Never
   backoffLimit: 2
-</pre>
+```
 Run it:
-<pre>
+```
 kubectl apply -f job.yaml
 kubectl get jobs
 kubectl logs job/hello-job
-</pre>
+```
 You’ll see output:
 <pre>
   Hello from Kubernetes Job!
 </pre>
+
 ## CronJob
-Create file and run file
+A CronJob runs Jobs on a schedule, similar to Linux cron.
+It uses a cron expression to decide when to run.
+Each scheduled run creates a Job that runs to completion.
+Used for periodic tasks like daily backups or cleanup scripts.
+
+**Create file and run file**
 <pre>
 apiVersion: batch/v1
 kind: CronJob
@@ -642,14 +653,19 @@ CronJob	                    batch	            batch/v1
 </pre>
 
 ## Taint & Tolerant & nodeSelector
+Taints and tolerations are used to control which Pods can run on which Nodes.
+A taint on a node prevents regular Pods from being scheduled there.
+A toleration on a Pod allows it to run on a tainted node.
+They are used for dedicated nodes, GPU nodes, system workloads, and maintenance scenarios.
+This ensures only the right Pods run on specific nodes.
 
 In Kubernetes, taints and tolerations work together to control which pods can be scheduled onto which nodes.
 ### Taint
  1. Applied on a node.
  2. Means “do not schedule pods here unless they tolerate this taint.”
-<pre>
+```
   kubectl taint nodes <node-name> key=value:effect
-</pre>
+```
 Effects:
 
 **NoSchedule** → Pods that don’t tolerate the taint will not be scheduled.
@@ -657,16 +673,16 @@ Effects:
 **PreferNoSchedule** → Tries to avoid placing pods here, but not strict.
 
 **NoExecute** → Evicts existing pods that don’t tolerate it, and stops new ones from being scheduled.
-<pre>
+```
   kubectl taint nodes worker1 dedicated=database:NoSchedule
-</pre>
+```
 ### Toleration
 Applied on a pod.
 
 Tells the scheduler: “I can tolerate this taint.”
 
 Defined inside the Pod spec:
-<pre>
+```
 apiVersion: v1
 kind: Pod
 metadata:
@@ -681,13 +697,18 @@ spec:
   - name: nginx
     image: nginx
 
-</pre>
+```
 **How they work together:**
 If a node has a taint, only pods with a matching toleration can be scheduled there.
-
 If no toleration exists, the pod is kept away from that node.
+
 ### nodeSelector
-NodeSelector schedules a pod only on nodes with specific labels.
+NodeSelector is the simplest way to schedule a Pod on specific nodes.
+You add labels to nodes, and the Pod’s nodeSelector must match those labels.
+Only nodes with the matching label will run that Pod.
+Used when you want to place a workload on particular nodes without taints or tolerations.
+
+<p>NodeSelector schedules a pod only on nodes with specific labels.</p>
 <pre>
   kubectl label nodes node-name dedicated=database
 </pre>
@@ -731,8 +752,13 @@ Toleration	         Node must have taint	        Pod must have toleration
 
 
 ## Affinity
-Create pod or deployment 
-<pre>
+Affinity is an advanced way to control where Pods are scheduled, more flexible than nodeSelector.
+It lets you place Pods based on node labels (Node Affinity) or other Pods (Pod Affinity/Anti-Affinity).
+You can make rules that are required (must follow) or preferred (best effort).
+Used for grouping Pods together, separating Pods, or placing them on specific types of nodes.
+
+**Create pod or deployment**
+```
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -762,20 +788,19 @@ spec:
         ports:
         - containerPort: 80
 
-</pre>
+```
 **Step 1.** Label your node with disktype=ssd
-<pre>
+```
   kubectl label nodes <your-node-name> disktype=ssd
-
-</pre>
+```
 **Step 2.** Apply the YAML:
-<pre>
+```
   kubectl apply -f nginx-deploy.yaml
-</pre>
+```
 **Step 3.** Check Pods:
-<pre>
+```
   kubectl get pods -o wide
-</pre>
+```
 
 **1. nodeSelector**
 
@@ -821,7 +846,7 @@ nodeAffinity → Pod chooses nodes with flexible/advanced rules (hard or soft).
 
 Taints & Tolerations → Node repels Pods unless Pods tolerate the taint.
 
-### Kubernetes Requests and Limits
+## Kubernetes Requests and Limits
 
 **Requests:**
 Minimum resources (CPU/Memory) guaranteed for a container.
@@ -835,7 +860,7 @@ If CPU usage > limit → Container is throttled (not killed).
 
 Create a pod which stress the memory 
 
-<pre>
+```
 apiVersion: v1
 kind: Pod
 metadata:
@@ -852,7 +877,7 @@ spec:
         memory: "100Mi"
     command: ["stress"]
     args: ["--vm", "1", "--vm-bytes", "250M", "--vm-hang", "1"]
-</pre>
+```
 output
 <pre>
 kubectl get pods -n mem-example
@@ -865,7 +890,7 @@ OOM (Out of memory)
 If a container tries to use more memory than its limit, the Kubernetes kubelet kills the container with status OOMKilled, even though the node might have free memory.
 
 The Below pod will be scheduled
-<pre>
+```
 apiVersion: v1
 kind: Pod
 metadata:
@@ -882,7 +907,7 @@ spec:
         memory: "200Mi"
     command: ["stress"]
     args: ["--vm", "1", "--vm-bytes", "150M", "--vm-hang", "1"]
-</pre>
+```
 <pre>
 kubectl get pods -n mem-example
   
@@ -891,6 +916,7 @@ memory-demo     1/1     Running     0             18s
 memory-demo-2   0/1     OOMKilled   4 (53s ago)   103s
 root@ip-172-31-32-126:~# 
 </pre>
+
 ## Health Probes
 
 **What are probes?**
